@@ -7,7 +7,7 @@
 
 ================================================================================
 
-### COMPACTAR PASRA WINDOWS LIBERAR ESPAÇO EM DISCO
+### COMPACTAR PASTA WINDOWS LIBERAR ESPAÇO EM DISCO
 
 compact.exe /compactOS:always
 
