@@ -6,6 +6,10 @@ Set-ItemProperty -Path "HKLM:\Software\Microsoft\Windows\CurrentVersion\Policies
 Write-Host "Configurando Explorador para abrir em 'Este Computador'..." -ForegroundColor Yellow
 Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "LaunchTo" -Value 1
 
+# Desativa a Hibernação completamente
+Write-Host "Desativando Hibernação..." -ForegroundColor Yellow
+powercfg /hibernate off
+
 # 2. Solicita a senha para o AnyDesk
 $senhaEntrada = Read-Host "Digite a senha do AnyDesk (ou Enter para pular)"
 
