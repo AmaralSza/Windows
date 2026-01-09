@@ -2,6 +2,10 @@
 Write-Host "Desativando avisos do UAC..." -ForegroundColor Yellow
 Set-ItemProperty -Path "HKLM:\Software\Microsoft\Windows\CurrentVersion\Policies\System" -Name "ConsentPromptBehaviorAdmin" -Value 0
 
+# Configura o Explorador de Arquivos para abrir em 'Este Computador'
+Write-Host "Configurando Explorador para abrir em 'Este Computador'..." -ForegroundColor Yellow
+Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "LaunchTo" -Value 1
+
 # 2. Solicita a senha para o AnyDesk
 $senhaEntrada = Read-Host "Digite a senha do AnyDesk (ou Enter para pular)"
 
