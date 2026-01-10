@@ -21,13 +21,12 @@ $apps = @(
     "Mozilla.Firefox",
     "AnyDeskSoftwareGmbH.AnyDesk",
     "Adobe.Acrobat.Reader.64-bit",
-    "RARLab.WinRAR",
-    "kolbasa.SetDefaultBrowser"  # Adicionado para permitir o Chrome como padrão
+    "RARLab.WinRAR"
 )
 
 foreach ($app in $apps) {
     Write-Host "Instalando: $app" -ForegroundColor White
-    winget install --id $app -e --accept-source-agreements --accept-package-agreements --silent
+    winget install --id $app -e --accept-source-agreements --accept-package-agreements --silent --locale pt-BR
 }
 
 # 4. Configura a senha do AnyDesk se foi digitada
@@ -37,12 +36,6 @@ if (-not [string]::IsNullOrWhiteSpace($senhaEntrada)) {
         echo $senhaTexto | & "C:\Program Files (x86)\AnyDesk\AnyDesk.exe" --set-password
         Write-Host "Senha do AnyDesk configurada!" -ForegroundColor Green
     }
-}
-
-# 5. Executa o utilitário para definir o Chrome como padrão
-if (Get-Command "SetDefaultBrowser" -ErrorAction SilentlyContinue) {
-    Write-Host "Definindo Google Chrome como navegador padrao..." -ForegroundColor Yellow
-    SetDefaultBrowser.exe "Google Chrome"
 }
 
 Write-Host "Tudo pronto!" -ForegroundColor Green
