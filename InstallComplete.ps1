@@ -1,14 +1,16 @@
-# 1. Limpeza e Preparação
-Write-Host "Resetando fontes do Winget para evitar erros de certificado..." -ForegroundColor Yellow
+# 1. Limpeza e Preparação do Winget
+Write-Host "Resetando fontes do Winget e desabilitando MSStore para evitar erros de certificado..." -ForegroundColor Yellow
+# Força o uso apenas do repositório oficial do Winget para evitar o erro 0x8a15005e
+winget source disable msstore
 winget source reset --force
 winget source update
 
-# O comando abaixo limpa instaladores parciais que podem causar o erro "No applicable installer found"
+# Limpa processos que podem travar a instalação
 Write-Host "Limpando instaladores parciais..." -ForegroundColor Yellow
 Stop-Process -Name "AppInstallerPython" -ErrorAction SilentlyContinue
 Start-Sleep -Seconds 2
 
-# Desativa as notificações do UAC
+# Desativa as notificações do UAC (evita pop-ups durante a instalação)
 Write-Host "Desativando avisos do UAC..." -ForegroundColor Yellow
 Set-ItemProperty -Path "HKLM:\Software\Microsoft\Windows\CurrentVersion\Policies\System" -Name "ConsentPromptBehaviorAdmin" -Value 0
 
@@ -36,20 +38,32 @@ $apps = @(
 
 foreach ($app in $apps) {
     Write-Host "Instalando: $app" -ForegroundColor White
-    # Adicionado --source winget para ignorar a MS Store e evitar o erro 0x8a15005e
-    winget install --id $app -e --source winget --accept-source-agreements --accept-package-agreements --silent --locale pt-BR
+    
+    # --id: usa o ID exato
+    # -e: exige correspondência exata
+    # --source winget: ignora a loja da Microsoft (MSStore)
+    # --scope machine: instala para todos os usuários (evita erros de permissão)
+    winget install --id $app -e --source winget --scope machine --accept-source-agreements --accept-package-agreements --silent --locale pt-BR
+
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "Aviso: Ocorreu um problema ao instalar $app, mas o script continuará." -ForegroundColor DarkYellow
+    }
 }
+
+# Reativa a MSStore ao final (opcional, remova se preferir manter desativada)
+winget source enable msstore
 
 # 4. Configura a senha do AnyDesk se foi digitada
 if (-not [string]::IsNullOrWhiteSpace($senhaEntrada)) {
-    # Caminho comum do AnyDesk (pode ser x86 ou x64 dependendo da versão)
     $anydeskPath = if (Test-Path "C:\Program Files (x86)\AnyDesk\AnyDesk.exe") { "C:\Program Files (x86)\AnyDesk\AnyDesk.exe" } 
                    else { "C:\Program Files\AnyDesk\AnyDesk.exe" }
 
     if (Test-Path $anydeskPath) {
         Write-Host "Configurando senha do AnyDesk..." -ForegroundColor Yellow
-        echo $senhaEntrada | & $anydeskPath --set-password
+        $senhaEntrada | & $anydeskPath --set-password
         Write-Host "Senha do AnyDesk configurada!" -ForegroundColor Green
+    } else {
+        Write-Host "AnyDesk não encontrado para configurar a senha." -ForegroundColor Red
     }
 }
 
