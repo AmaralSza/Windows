@@ -1,8 +1,8 @@
 # Versão
-Write-Host "Versão 1.0" -ForegroundColor Yellow
+Write-Host "Versão 1.1" -ForegroundColor Yellow
 
 # 1. Limpeza e Preparação do Winget
-Write-Host "Resetando fontes do Winget para corrigir erros de certificado..." -ForegroundColor Yellow
+Write-Host "Resetando fontes do Winget..." -ForegroundColor Yellow
 winget source reset --force
 winget source update
 
@@ -15,7 +15,7 @@ Start-Sleep -Seconds 2
 Write-Host "Desativando avisos do UAC..." -ForegroundColor Yellow
 Set-ItemProperty -Path "HKLM:\Software\Microsoft\Windows\CurrentVersion\Policies\System" -Name "ConsentPromptBehaviorAdmin" -Value 0
 
-# Configura o Explorador para abrir em 'Este Computador'
+# Configura o Explorador de Arquivos para abrir em 'Este Computador'
 Write-Host "Configurando Explorador..." -ForegroundColor Yellow
 Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "LaunchTo" -Value 1
 
@@ -25,10 +25,9 @@ powercfg /hibernate off
 # 2. Solicita a senha para o AnyDesk
 $senhaEntrada = Read-Host "Digite a senha do AnyDesk (ou Enter para pular)"
 
-# 3. Instalação dos Programas
+# 3. Instalação/Atualização dos Programas
 Write-Host "Iniciando instalacoes via Winget..." -ForegroundColor Cyan
 
-# Lista simplificada para maior compatibilidade
 $apps = @(
     "Google.Chrome",
     "Mozilla.Firefox",
@@ -38,29 +37,29 @@ $apps = @(
 )
 
 foreach ($app in $apps) {
-    Write-Host "Instalando/Atualizando: $app" -ForegroundColor White
+    Write-Host "Processando: $app" -ForegroundColor White
     
-    # Removido --scope machine e --architecture para deixar o Winget decidir o melhor instalador
-    # Mantido --source winget para evitar o erro de certificado da MS Store
-    winget install --id $app -e --source winget --accept-source-agreements --accept-package-agreements --silent --upgrade --force
-
+    # Tenta atualizar primeiro (caso já esteja instalado)
+    # --install-if-not-found: faz o Winget instalar se não encontrar o app (suportado em versões 1.x+)
+    # Se falhar, tentamos o install puro
+    winget upgrade --id $app -e --source winget --accept-source-agreements --accept-package-agreements --silent
+    
     if ($LASTEXITCODE -ne 0) {
-        Write-Host "Tentando instalar $app sem filtros de fonte..." -ForegroundColor Gray
-        winget install --id $app -e --accept-source-agreements --accept-package-agreements --silent
+        Write-Host "Tentando instalacao limpa para $app..." -ForegroundColor Gray
+        winget install --id $app -e --source winget --accept-source-agreements --accept-package-agreements --silent
     }
 }
 
 # 4. Configura a senha do AnyDesk
 if (-not [string]::IsNullOrWhiteSpace($senhaEntrada)) {
-    # Procura o executável em ambos os locais possíveis
     $anydeskPath = Get-ChildItem -Path "C:\Program Files*\AnyDesk\AnyDesk.exe" -ErrorAction SilentlyContinue | Select-Object -ExpandProperty FullName -First 1
 
     if ($anydeskPath) {
-        Write-Host "Configurando senha do AnyDesk em: $anydeskPath" -ForegroundColor Yellow
+        Write-Host "Configurando senha do AnyDesk..." -ForegroundColor Yellow
         $senhaEntrada | & $anydeskPath --set-password
         Write-Host "Senha do AnyDesk configurada!" -ForegroundColor Green
     }
 }
 
-Write-Host "Script finalizado!" -ForegroundColor Green
+Write-Host "Script finalizado com sucesso!" -ForegroundColor Green
 pause
