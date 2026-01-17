@@ -4,6 +4,7 @@ winget source reset --force
 winget source update
 
 # O comando abaixo limpa instaladores parciais que podem causar o erro "No applicable installer found"
+Write-Host "Limpando instaladores parciais..." -ForegroundColor Yellow
 Stop-Process -Name "AppInstallerPython" -ErrorAction SilentlyContinue
 Start-Sleep -Seconds 2
 
