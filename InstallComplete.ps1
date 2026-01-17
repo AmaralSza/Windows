@@ -3,6 +3,10 @@ Write-Host "Resetando fontes do Winget para evitar erros de certificado..." -For
 winget source reset --force
 winget source update
 
+# O comando abaixo limpa instaladores parciais que podem causar o erro "No applicable installer found"
+Stop-Process -Name "AppInstallerPython" -ErrorAction SilentlyContinue
+Start-Sleep -Seconds 2
+
 # Desativa as notificações do UAC
 Write-Host "Desativando avisos do UAC..." -ForegroundColor Yellow
 Set-ItemProperty -Path "HKLM:\Software\Microsoft\Windows\CurrentVersion\Policies\System" -Name "ConsentPromptBehaviorAdmin" -Value 0
