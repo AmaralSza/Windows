@@ -1,5 +1,5 @@
 # Versão
-Write-Host "Versão 1.2" -ForegroundColor Yellow
+Write-Host "Versão 1.3" -ForegroundColor Yellow
 
 # 1. Limpeza e Preparação do Winget
 Write-Host "Resetando fontes do Winget..." -ForegroundColor Yellow
@@ -29,7 +29,7 @@ $senhaEntrada = Read-Host "Digite a senha do AnyDesk (ou Enter para pular)"
 Write-Host "Iniciando instalacoes via Winget..." -ForegroundColor Cyan
 
 $apps = @(
-    "AnyDeskSoftwareGmbH.AnyDesk",
+    "AnyDesk.AnyDesk",
     "Google.Chrome",
     "Mozilla.Firefox",
     "Adobe.Acrobat.Reader.64-bit",
