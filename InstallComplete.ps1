@@ -1,3 +1,6 @@
+# Versão
+Write-Host "Versão 1.0" -ForegroundColor Yellow
+
 # 1. Limpeza e Preparação do Winget
 Write-Host "Resetando fontes do Winget para corrigir erros de certificado..." -ForegroundColor Yellow
 winget source reset --force
