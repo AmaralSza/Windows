@@ -1,5 +1,5 @@
 # Versão
-Write-Host "Versão 1.4" -ForegroundColor Yellow
+Write-Host "Versão 1.5" -ForegroundColor Yellow
 
 # --- FUNÇÃO PARA CONFIGURAR SENHA DO ANYDESK (Declarada no início para ser reconhecida) ---
 function Set-AnyDeskPassword {
@@ -56,9 +56,9 @@ foreach ($app in $apps) {
     Write-Host "Processando: $app" -ForegroundColor White
     
     # Tenta Upgrade ou Install
-    winget upgrade --id $app -e --source winget --accept-source-agreements --accept-package-agreements --silent
+    winget upgrade --id $app -e --source winget --accept-source-agreements --accept-package-agreements --silent --locale pt-BR
     if ($LASTEXITCODE -ne 0) {
-        winget install --id $app -e --source winget --accept-source-agreements --accept-package-agreements --silent
+        winget install --id $app -e --source winget --accept-source-agreements --accept-package-agreements --silent --locale pt-BR
     }
 
     # --- CHAMADA DA FUNÇÃO LOGO APÓS INSTALAR O ANYDESK ---
