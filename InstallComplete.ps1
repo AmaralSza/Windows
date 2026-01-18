@@ -1,5 +1,21 @@
 # Versão
-Write-Host "Versão 1.3" -ForegroundColor Yellow
+Write-Host "Versão 1.4" -ForegroundColor Yellow
+
+# --- FUNÇÃO PARA CONFIGURAR SENHA DO ANYDESK (Declarada no início para ser reconhecida) ---
+function Set-AnyDeskPassword {
+    param($senha)
+    if (-not [string]::IsNullOrWhiteSpace($senha)) {
+        Write-Host "Aguardando instalação finalizar para aplicar senha..." -ForegroundColor Gray
+        Start-Sleep -Seconds 5
+        $anydeskPath = Get-ChildItem -Path "C:\Program Files*\AnyDesk\AnyDesk.exe" -ErrorAction SilentlyContinue | Select-Object -ExpandProperty FullName -First 1
+        
+        if ($anydeskPath) {
+            Write-Host "Configurando senha do AnyDesk..." -ForegroundColor Yellow
+            $senha | & $anydeskPath --set-password
+            Write-Host "Senha do AnyDesk configurada!" -ForegroundColor Green
+        }
+    }
+}
 
 # 1. Limpeza e Preparação do Winget
 Write-Host "Resetando fontes do Winget..." -ForegroundColor Yellow
@@ -39,25 +55,15 @@ $apps = @(
 foreach ($app in $apps) {
     Write-Host "Processando: $app" -ForegroundColor White
     
-    # Tenta atualizar primeiro (caso já esteja instalado)
-    # --install-if-not-found: faz o Winget instalar se não encontrar o app (suportado em versões 1.x+)
-    # Se falhar, tentamos o install puro
+    # Tenta Upgrade ou Install
     winget upgrade --id $app -e --source winget --accept-source-agreements --accept-package-agreements --silent
-    
     if ($LASTEXITCODE -ne 0) {
-        Write-Host "Tentando instalacao limpa para $app..." -ForegroundColor Gray
         winget install --id $app -e --source winget --accept-source-agreements --accept-package-agreements --silent
     }
-}
 
-# 4. Configura a senha do AnyDesk
-if (-not [string]::IsNullOrWhiteSpace($senhaEntrada)) {
-    $anydeskPath = Get-ChildItem -Path "C:\Program Files*\AnyDesk\AnyDesk.exe" -ErrorAction SilentlyContinue | Select-Object -ExpandProperty FullName -First 1
-
-    if ($anydeskPath) {
-        Write-Host "Configurando senha do AnyDesk..." -ForegroundColor Yellow
-        $senhaEntrada | & $anydeskPath --set-password
-        Write-Host "Senha do AnyDesk configurada!" -ForegroundColor Green
+    # --- CHAMADA DA FUNÇÃO LOGO APÓS INSTALAR O ANYDESK ---
+    if ($app -eq "AnyDesk.AnyDesk") {
+        Set-AnyDeskPassword -senha $senhaEntrada
     }
 }
 
