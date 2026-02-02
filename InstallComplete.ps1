@@ -1,5 +1,5 @@
 # Versão
-Write-Host "Versão 1.6" -ForegroundColor Yellow
+Write-Host "Versão 1.7" -ForegroundColor Yellow
 
 # --- FUNÇÃO PARA CONFIGURAR SENHA DO ANYDESK (Declarada no início para ser reconhecida) ---
 function Set-AnyDeskPassword {
@@ -59,8 +59,15 @@ foreach ($app in $apps) {
     winget upgrade --id $app -e --source winget --accept-source-agreements --accept-package-agreements --silent --locale pt-BR
     if ($LASTEXITCODE -ne 0) {
         #winget install --id $app -e --source winget --accept-source-agreements --accept-package-agreements --silent --locale pt-BR
-        winget install $app -e --source winget --accept-source-agreements --accept-package-agreements --silent --locale pt-BR
+        # Tenta instalar com locale
+        winget install --id $app -e --source winget --accept-source-agreements --accept-package-agreements --silent --locale pt-BR
+
+        # Se falhar, tenta sem o locale
+    if (-not $?) {
+        Write-Host "Instalação com locale falhou. Tentando instalação padrão..." -ForegroundColor Yellow
+        winget install --id $app -e --source winget --accept-source-agreements --accept-package-agreements --silent
     }
+}
 
     # --- CHAMADA DA FUNÇÃO LOGO APÓS INSTALAR O ANYDESK ---
     if ($app -eq "AnyDesk.AnyDesk") {
