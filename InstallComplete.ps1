@@ -1,5 +1,5 @@
 # Versão
-Write-Host "Versão 1.7" -ForegroundColor Yellow
+Write-Host "Versão 1.8" -ForegroundColor Yellow
 
 # --- FUNÇÃO PARA CONFIGURAR SENHA DO ANYDESK (Declarada no início para ser reconhecida) ---
 function Set-AnyDeskPassword {
@@ -35,8 +35,18 @@ Set-ItemProperty -Path "HKLM:\Software\Microsoft\Windows\CurrentVersion\Policies
 Write-Host "Configurando Explorador..." -ForegroundColor Yellow
 Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "LaunchTo" -Value 1
 
+# --- CONFIGURAÇÕES DE ENERGIA E Hibernação
+Write-Host "Configurando Energia e Tampa..." -ForegroundColor Yellow
 # Desativa a Hibernação
 powercfg /hibernate off
+# Nunca suspender (Tomada e Bateria)
+powercfg /x -standby-timeout-ac 0
+powercfg /x -standby-timeout-dc 0
+# Fechar a tampa = Nada a fazer (Tomada e Bateria)
+powercfg /setacvalueindex SCHEME_CURRENT SUB_BUTTONS LIDACTION 0
+powercfg /setdcvalueindex SCHEME_CURRENT SUB_BUTTONS LIDACTION 0
+# Aplica as configurações
+powercfg /s SCHEME_CURRENT
 
 # 2. Solicita a senha para o AnyDesk
 $senhaEntrada = Read-Host "Digite a senha do AnyDesk (ou Enter para pular)"
