@@ -5,7 +5,7 @@ function Log-Info ($msg) { Write-Host $msg -ForegroundColor Cyan }
 
 # Versão
 Log "Binarius Tech - Soluções em Informática"
-Log "Versão 1.9"
+Log "Versão 1.10"
 
 # --- FUNÇÃO PARA CONFIGURAR SENHA DO ANYDESK ---
 function Set-AnyDeskPassword {
@@ -21,6 +21,14 @@ function Set-AnyDeskPassword {
             Log-Ok "Senha do AnyDesk configurada!"
         }
     }
+}
+
+Log "Verificando disponibilidade do Winget..."
+if (-not (Get-Command "winget" -ErrorAction SilentlyContinue)) {
+    Log "Baixando instalador oficial do Winget..."
+    $url = "https://github.com/microsoft/winget-cli/releases/latest/download/Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle"
+    Invoke-WebRequest -Uri $url -OutFile "$env:TEMP\winget.msixbundle"
+    Add-AppxPackage "$env:TEMP\winget.msixbundle"
 }
 
 # 1. Limpeza e Preparação
