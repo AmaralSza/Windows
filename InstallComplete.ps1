@@ -5,7 +5,7 @@ function Log-Info ($msg) { Write-Host $msg -ForegroundColor Cyan }
 
 # Versão
 Log "Binarius Tech - Soluções em Informática"
-Log "Versão 1.12"
+Log "Versão 1.13"
 
 # --- FUNÇÃO PARA CONFIGURAR SENHA DO ANYDESK ---
 function Set-AnyDeskPassword {
@@ -25,9 +25,14 @@ function Set-AnyDeskPassword {
 
 Log "Verificando disponibilidade do Winget..."
 if (-not (Get-Command "winget" -ErrorAction SilentlyContinue)) {
-    Log "Baixando instalador oficial do Winget..."
+    Log "Winget nao encontrado. Baixando instalador oficial (aguarde)..."
     $url = "https://github.com/microsoft/winget-cli/releases/latest/download/Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle"
+    $progressoAntigo = $ProgressPreference
+    $ProgressPreference = 'SilentlyContinue' # Desativa a barra de progresso para acelerar o download
     Invoke-WebRequest -Uri $url -OutFile "$env:TEMP\winget.msixbundle"
+    $ProgressPreference = $progressoAntigo # Restaura o padrao
+    
+    Log "Instalando pacote baixado..."
     Add-AppxPackage "$env:TEMP\winget.msixbundle"
 }
 
