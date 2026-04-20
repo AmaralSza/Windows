@@ -5,7 +5,7 @@ function Log-Info ($msg) { Write-Host $msg -ForegroundColor Cyan }
 
 # Versão
 Log "Binarius Tech - Soluções em Informática"
-Log "Versão 1.13"
+Log "Versão 1.14"
 
 # --- FUNÇÃO PARA CONFIGURAR SENHA DO ANYDESK ---
 function Set-AnyDeskPassword {
@@ -34,6 +34,19 @@ if (-not (Get-Command "winget" -ErrorAction SilentlyContinue)) {
     
     Log "Instalando pacote baixado..."
     Add-AppxPackage "$env:TEMP\winget.msixbundle"
+}
+
+# Verificar versão winget
+$wingetVersion = winget --version 2>$null
+if ($wingetVersion -match 'v1.[0-3].') {
+    Log "Versão antiga detectada ($wingetVersion). Atualizando para evitar erro de --locale..."
+    $url = "https://github.com/microsoft/winget-cli/releases/latest/download/Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle"
+    $progressoAntigo = $ProgressPreference
+    $ProgressPreference = 'SilentlyContinue'
+    Invoke-WebRequest -Uri $url -OutFile "$env:TEMP\winget.msixbundle"
+    $ProgressPreference = $progressoAntigo
+    Add-AppxPackage "$env:TEMP\winget.msixbundle"
+    Log-Ok "Winget atualizado com sucesso!"
 }
 
 # 1. Limpeza e Preparação
