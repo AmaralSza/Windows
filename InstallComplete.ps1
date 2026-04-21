@@ -5,7 +5,7 @@ function Log-Info ($msg) { Write-Host $msg -ForegroundColor Cyan }
 
 # Versão
 Log "Binarius Tech - Soluções em Informática"
-Log "Versão 1.14"
+Log "Versão 1.15"
 
 # --- FUNÇÃO PARA CONFIGURAR SENHA DO ANYDESK ---
 function Set-AnyDeskPassword {
@@ -37,9 +37,10 @@ if (-not (Get-Command "winget" -ErrorAction SilentlyContinue)) {
 }
 
 # Verificar versão winget
+Log "Verificando versão do Winget..."
 $wingetVersion = winget --version 2>$null
 if ($wingetVersion -match 'v1.[0-3].') {
-    Log "Versão antiga detectada ($wingetVersion). Atualizando para evitar erro de --locale..."
+    Log "Versão antiga detectada ($wingetVersion). Atualizando a versão do winget..."
     $url = "https://github.com/microsoft/winget-cli/releases/latest/download/Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle"
     $progressoAntigo = $ProgressPreference
     $ProgressPreference = 'SilentlyContinue'
