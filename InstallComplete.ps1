@@ -5,7 +5,7 @@ function Log-Info ($msg) { Write-Host $msg -ForegroundColor Cyan }
 
 # Versão
 Log "Binarius Tech - Soluções em Informática"
-Log "Versão 1.17"
+Log "Versão 1.18"
 
 # --- FUNÇÃO PARA CONFIGURAR SENHA DO ANYDESK ---
 function Set-AnyDeskPassword {
@@ -72,8 +72,21 @@ Log "Desativando avisos do UAC..."
 Set-ItemProperty -Path "HKLM:\Software\Microsoft\Windows\CurrentVersion\Policies\System" -Name "ConsentPromptBehaviorAdmin" -Value 0
 
 # Configura o Explorador de Arquivos para abrir em 'Este Computador'
-Log "Configurando Explorador..."
-Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "LaunchTo" -Value 1
+Log "Configurando Explorador para o usuário real..."
+# Descobre o SID do usuário logado no console
+$userSID = (Get-WmiObject Win32_ComputerSystem).UserName
+if ($userSID) {
+    $userSID = (New-Object System.Security.Principal.NTAccount($userSID)).Translate([System.Security.Principal.SecurityIdentifier]).Value
+    $regPath = "Registry::HKEY_USERS\$userSID\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"
+    
+    if (Test-Path $regPath) {
+        Set-ItemProperty -Path $regPath -Name "LaunchTo" -Value 1
+        Log-Ok "Configuracao aplicada ao perfil do usuario logado."
+    }
+} else {
+    # Fallback caso a detecção falhe (aplica no HKCU padrão)
+    Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "LaunchTo" -Value 1
+}
 
 # --- CONFIGURAÇÕES DE ENERGIA E Hibernação
 Log "Configurando Energia e Tampa..."
