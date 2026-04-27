@@ -5,7 +5,7 @@ function Log-Info ($msg) { Write-Host $msg -ForegroundColor Cyan }
 
 # Versão
 Log "Binarius Tech - Soluções em Informática"
-Log "Versão 1.15"
+Log "Versão 1.16"
 
 # --- FUNÇÃO PARA CONFIGURAR SENHA DO ANYDESK ---
 function Set-AnyDeskPassword {
@@ -25,15 +25,22 @@ function Set-AnyDeskPassword {
 
 Log "Verificando disponibilidade do Winget..."
 if (-not (Get-Command "winget" -ErrorAction SilentlyContinue)) {
-    Log "Winget nao encontrado. Baixando instalador oficial (aguarde)..."
-    $url = "https://github.com/microsoft/winget-cli/releases/latest/download/Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle"
-    $progressoAntigo = $ProgressPreference
-    $ProgressPreference = 'SilentlyContinue' # Desativa a barra de progresso para acelerar o download
-    Invoke-WebRequest -Uri $url -OutFile "$env:TEMP\winget.msixbundle"
-    $ProgressPreference = $progressoAntigo # Restaura o padrao
     
-    Log "Instalando pacote baixado..."
+    Log "Winget nao encontrado. Instalando dependencias (WindowsAppRuntime)..."
+    $ProgressPreference = 'SilentlyContinue'
+    
+    # 1. Baixar e instalar a dependência WindowsAppRuntime (Necessária para versões novas do Winget)
+    $depUrl = "https://aka.ms/windowsappsdk/1.6/1.6.241105002/windowsappruntimeinstall-x64.exe"
+    Invoke-WebRequest -Uri $depUrl -OutFile "$env:TEMP\runtime.exe"
+    Start-Process -FilePath "$env:TEMP\runtime.exe" -ArgumentList "--quiet" -Wait
+    
+    Log "Baixando instalador oficial do Winget..."
+    $url = "https://github.com/microsoft/winget-cli/releases/latest/download/Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle"
+    Invoke-WebRequest -Uri $url -OutFile "$env:TEMP\winget.msixbundle"
+    
+    Log "Instalando Winget..."
     Add-AppxPackage "$env:TEMP\winget.msixbundle"
+    $ProgressPreference = 'Continue'
 }
 
 # Verificar versão winget
