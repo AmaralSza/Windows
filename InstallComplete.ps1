@@ -5,7 +5,7 @@ function Log-Info ($msg) { Write-Host $msg -ForegroundColor Cyan }
 
 # Versão
 Log "Binarius Tech - Soluções em Informática"
-Log "Versão 1.16"
+Log "Versão 1.17"
 
 # --- FUNÇÃO PARA CONFIGURAR SENHA DO ANYDESK ---
 function Set-AnyDeskPassword {
@@ -29,7 +29,7 @@ if (-not (Get-Command "winget" -ErrorAction SilentlyContinue)) {
     Log "Winget nao encontrado. Instalando dependencias (WindowsAppRuntime)..."
     $ProgressPreference = 'SilentlyContinue'
     
-    # 1. Baixar e instalar a dependência WindowsAppRuntime (Necessária para versões novas do Winget)
+    # 1. Instala o WindowsAppRuntime (Necessário para o erro 0x80073CF3)
     $depUrl = "https://aka.ms/windowsappsdk/1.6/1.6.241105002/windowsappruntimeinstall-x64.exe"
     Invoke-WebRequest -Uri $depUrl -OutFile "$env:TEMP\runtime.exe"
     Start-Process -FilePath "$env:TEMP\runtime.exe" -ArgumentList "--quiet" -Wait
