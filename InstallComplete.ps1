@@ -5,7 +5,7 @@ function Log-Info ($msg) { Write-Host $msg -ForegroundColor Cyan }
 
 # Versão
 Log "Binarius Tech - Soluções em Informática"
-Log "Versão 1.19"
+Log "Versão 1.18"
 
 # --- FUNÇÃO PARA CONFIGURAR SENHA DO ANYDESK ---
 function Set-AnyDeskPassword {
@@ -26,36 +26,20 @@ function Set-AnyDeskPassword {
 Log "Verificando disponibilidade do Winget..."
 if (-not (Get-Command "winget" -ErrorAction SilentlyContinue)) {
     
-    Log "Winget nao encontrado. Preparando instalacao..."
-    $runtimePath = "$env:TEMP\runtime.exe"
-    $wingetPath = "$env:TEMP\winget.msixbundle"
-
-    # Remove arquivos corrompidos anteriores se existirem
-    if (Test-Path $runtimePath) { Remove-Item $runtimePath -Force }
-    if (Test-Path $wingetPath) { Remove-Item $wingetPath -Force }
-    
-    Log "Instalando dependencias (WindowsAppRuntime)..."
+    Log "Winget nao encontrado. Instalando dependencias (WindowsAppRuntime)..."
     $ProgressPreference = 'SilentlyContinue'
     
-    # Download da dependência com tratamento de erro
-    try {
-        $depUrl = "https://aka.ms/windowsappsdk/1.6/1.6.241105002/windowsappruntimeinstall-x64.exe"
-        Invoke-WebRequest -Uri $depUrl -OutFile $runtimePath -ErrorAction Stop
-        
-        # Tenta executar. Se o disco estiver corrompido, o 'catch' avisa.
-        Start-Process -FilePath $runtimePath -ArgumentList "--quiet" -Wait -ErrorAction Stop
-        Log-Ok "Dependencia instalada."
-    } catch {
-        Log "ERRO CRITICO: Falha ao baixar ou executar dependencia. Verifique o disco (SMART)."
-        pause
-        exit
-    }
+    # 1. Instala o WindowsAppRuntime (Necessário para o erro 0x80073CF3)
+    $depUrl = "https://aka.ms/windowsappsdk/1.6/1.6.241105002/windowsappruntimeinstall-x64.exe"
+    Invoke-WebRequest -Uri $depUrl -OutFile "$env:TEMP\runtime.exe"
+    Start-Process -FilePath "$env:TEMP\runtime.exe" -ArgumentList "--quiet" -Wait
     
     Log "Baixando instalador oficial do Winget..."
-    Invoke-WebRequest -Uri "https://github.com/microsoft/winget-cli/releases/latest/download/Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle" -OutFile $wingetPath
+    $url = "https://github.com/microsoft/winget-cli/releases/latest/download/Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle"
+    Invoke-WebRequest -Uri $url -OutFile "$env:TEMP\winget.msixbundle"
     
     Log "Instalando Winget..."
-    Add-AppxPackage $wingetPath
+    Add-AppxPackage "$env:TEMP\winget.msixbundle"
     $ProgressPreference = 'Continue'
 }
 
