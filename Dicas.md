@@ -12,3 +12,9 @@
 compact.exe /compactOS:always
 
 ================================================================================
+
+### CONFERIR FREQUENCIA DA MEMODIA WINDOWS 11 NO PowerShell
+
+Get-CimInstance -ClassName Win32_PhysicalMemory | Select-Object Speed
+
+================================================================================
