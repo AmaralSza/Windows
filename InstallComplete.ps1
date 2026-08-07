@@ -5,7 +5,7 @@ function Log-Info ($msg) { Write-Host $msg -ForegroundColor Cyan }
 
 # Versão
 Log "Binarius Tech - Soluções em Informática"
-Log "Versão 1.18"
+Log "Versão 1.19"
 
 # --- FUNÇÃO PARA CONFIGURAR SENHA DO ANYDESK ---
 function Set-AnyDeskPassword {
@@ -101,19 +101,27 @@ powercfg /setdcvalueindex SCHEME_CURRENT SUB_BUTTONS LIDACTION 0
 # Aplica as configurações
 powercfg /s SCHEME_CURRENT
 
-# 2. Solicita a senha para o AnyDesk
-$senhaEntrada = Read-Host "Digite a senha do AnyDesk (ou Enter para pular)"
+# --- PERGUNTA SOBRE A INSTALAÇÃO DO ANYDESK ---
+$instalarAnyDesk = Read-Host "Deseja instalar o AnyDesk? (S/N)"
+$senhaEntrada = ""
+if ($instalarAnyDesk -match '^[SsYy]') {
+    $senhaEntrada = Read-Host "Digite a senha do AnyDesk (ou Enter para pular)"
+}
 
 # 3. Instalação/Atualização dos Programas
 Log-Info "Iniciando instalacoes via Winget..."
 
 $apps = @(
-    "AnyDesk.AnyDesk",
     "Google.Chrome",
     "Mozilla.Firefox",
     "Adobe.Acrobat.Reader.64-bit",
     "RARLab.WinRAR"
 )
+
+# Adiciona o AnyDesk na lista caso o usuário tenha optado por instalar
+if ($instalarAnyDesk -match '^[SsYy]') {
+    $apps = @("AnyDesk.AnyDesk") + $apps
+}
 
 foreach ($app in $apps) {
     Write-Host "Processando: $app" -ForegroundColor White
@@ -125,11 +133,11 @@ foreach ($app in $apps) {
         winget install --id $app -e --source winget --accept-source-agreements --accept-package-agreements --silent --locale pt-BR
 
         # Se falhar, tenta sem o locale
-    if (-not $?) {
-        Log "Instalação com locale falhou. Tentando padrão..."
-        winget install --id $app -e --source winget --accept-source-agreements --accept-package-agreements --silent
+        if (-not $?) {
+            Log "Instalação com locale falhou. Tentando padrão..."
+            winget install --id $app -e --source winget --accept-source-agreements --accept-package-agreements --silent
+        }
     }
-}
 
     # --- CHAMADA DA FUNÇÃO LOGO APÓS INSTALAR O ANYDESK ---
     if ($app -eq "AnyDesk.AnyDesk") {
