@@ -1,14 +1,37 @@
-# Função de cores
-function Log ($msg) { Write-Host $msg -ForegroundColor Yellow }
-function Log-Ok ($msg) { Write-Host $msg -ForegroundColor Green }
-function Log-Info ($msg) { Write-Host $msg -ForegroundColor Cyan }
-function Log-Err ($msg) { Write-Host $msg -ForegroundColor Red }
+# --- DEFINIÇÃO DO ARQUIVO DE LOG ---
+$LogPath = Join-Path -Path $PSScriptRoot -ChildPath "log.txt"
 
-# Versão
+# Cria/Sobrescreve o arquivo no início da execução
+"======================================================" | Out-File -FilePath $LogPath -Force -Encoding utf8
+"Binarius Tech - Soluções em Informática - Instalação"   | Out-File -FilePath $LogPath -Append -Encoding utf8
+"Data/Hora: $(Get-Date -Format 'dd/MM/yyyy HH:mm:ss')"    | Out-File -FilePath $LogPath -Append -Encoding utf8
+"======================================================" | Out-File -FilePath $LogPath -Append -Encoding utf8
+
+# --- FUNÇÕES DE CORES E LOG ---
+function Write-CustomLog {
+    param(
+        [string]$msg,
+        [string]$nivel = "INFO",
+        [ConsoleColor]$color = [ConsoleColor]::White
+    )
+    $timestamp = Get-Date -Format "HH:mm:ss"
+    "[$timestamp][$nivel] $msg" | Out-File -FilePath $LogPath -Append -Encoding utf8
+    Write-Host $msg -ForegroundColor $color
+}
+
+function Log ($msg) { Write-CustomLog -msg $msg -nivel "INFO" -color Yellow }
+function Log-Ok ($msg) { Write-CustomLog -msg $msg -nivel "SUCESSO" -color Green }
+function Log-Info ($msg) { Write-CustomLog -msg $msg -nivel "AVISO" -color Cyan }
+function Log-Err ($msg) { Write-CustomLog -msg $msg -nivel "ERRO" -color Red }
+
+# Cabeçalho no Terminal
+Clear-Host
+Log "=========================================="
 Log "Binarius Tech - Soluções em Informática"
-Log "Versão 1.26"
+Log "Versão 1.27"
+Log "=========================================="
 
-# --- FUNÇÃO PARA DOWNLOAD COM BARRA DE PROGRESSO VISUAL LIMPA ---
+# --- FUNÇÃO PARA DOWNLOAD COM BARRA DE PROGRESSO VISUAL ---
 function Download-ComProgresso {
     param(
         [Parameter(Mandatory=$true)][string]$Uri,
@@ -18,7 +41,6 @@ function Download-ComProgresso {
     
     $webClient = New-Object System.Net.WebClient
     
-    # Evento para atualizar a barra de progresso visual do PowerShell
     $eventHandler = {
         $percent = $EventArgs.ProgressPercentage
         $mbRecebidos = [Math]::Round($EventArgs.BytesReceived / 1MB, 2)
@@ -39,6 +61,9 @@ function Download-ComProgresso {
             Start-Sleep -Milliseconds 100
         }
         Write-Progress -Activity $Descricao -Completed
+        "Download concluído: $Uri -> $OutFile" | Out-File -FilePath $LogPath -Append -Encoding utf8
+    } catch {
+        "Erro no download de $Uri : $_" | Out-File -FilePath $LogPath -Append -Encoding utf8
     } finally {
         $webClient.Dispose()
         Get-EventSubscriber | Where-Object { $_.SourceObject -eq $webClient } | Unregister-Event
@@ -49,24 +74,23 @@ function Download-ComProgresso {
 function Set-AnyDeskPassword {
     param($senha)
     if (-not [string]::IsNullOrWhiteSpace($senha)) {
-        Write-Host "Aguardando instalação finalizar..." -ForegroundColor Gray
         Start-Sleep -Seconds 5
         $anydeskPath = Get-ChildItem -Path "C:\Program Files*\AnyDesk\AnyDesk.exe" -ErrorAction SilentlyContinue | Select-Object -ExpandProperty FullName -First 1
         
         if ($anydeskPath) {
             Log "Configurando senha do AnyDesk..."
-            $senha | & $anydeskPath --set-password *>$null
+            $senha | & $anydeskPath --set-password *>> $LogPath
             Log-Ok "Senha do AnyDesk configurada!"
         }
     }
 }
 
+# --- VERIFICAÇÃO DO WINGET ---
 Log "Verificando disponibilidade do Winget..."
 if (-not (Get-Command "winget" -ErrorAction SilentlyContinue)) {
     
     Log "Winget nao encontrado. Instalando dependencias (WindowsAppRuntime)..."
     
-    # 1. Instala o WindowsAppRuntime (Necessário para o erro 0x80073CF3)
     $depUrl = "https://aka.ms/windowsappsdk/1.6/1.6.241105002/windowsappruntimeinstall-x64.exe"
     Download-ComProgresso -Uri $depUrl -OutFile "$env:TEMP\runtime.exe" -Descricao "Baixando WindowsAppRuntime"
     Start-Process -FilePath "$env:TEMP\runtime.exe" -ArgumentList "--quiet" -Wait
@@ -76,52 +100,43 @@ if (-not (Get-Command "winget" -ErrorAction SilentlyContinue)) {
     Download-ComProgresso -Uri $url -OutFile "$env:TEMP\winget.msixbundle" -Descricao "Baixando Winget MSIXBundle"
     
     Log "Instalando Winget..."
-    Add-AppxPackage "$env:TEMP\winget.msixbundle"
+    Add-AppxPackage "$env:TEMP\winget.msixbundle" *>> $LogPath
 }
 
-# 1. Limpeza e Preparação
+# --- LIMPEZA E PREPARAÇÃO ---
 Log "Resetando fontes do Winget..."
-winget source reset --force
-winget source update
+winget source reset --force *>> $LogPath
+winget source update *>> $LogPath
 
-# Limpa processos que podem travar a instalação
-Log "Limpando instaladores parciais..."
-Stop-Process -Name "AppInstallerPython" -ErrorAction SilentlyContinue
+Log "Limpando processos parciais..."
+Stop-Process -Name "AppInstallerPython" -ErrorAction SilentlyContinue *>> $LogPath
 Start-Sleep -Seconds 2
 
-# Desativa as notificações do UAC
+# --- AJUSTES DO SISTEMA ---
 Log "Desativando avisos do UAC..."
-Set-ItemProperty -Path "HKLM:\Software\Microsoft\Windows\CurrentVersion\Policies\System" -Name "ConsentPromptBehaviorAdmin" -Value 0
+Set-ItemProperty -Path "HKLM:\Software\Microsoft\Windows\CurrentVersion\Policies\System" -Name "ConsentPromptBehaviorAdmin" -Value 0 *>> $LogPath
 
-# Configura o Explorador de Arquivos para abrir em 'Este Computador'
 Log "Configurando Explorador para o usuário real..."
-# Descobre o SID do usuário logado no console
 $userSID = (Get-WmiObject Win32_ComputerSystem).UserName
 if ($userSID) {
     $userSID = (New-Object System.Security.Principal.NTAccount($userSID)).Translate([System.Security.Principal.SecurityIdentifier]).Value
     $regPath = "Registry::HKEY_USERS\$userSID\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"
     
     if (Test-Path $regPath) {
-        Set-ItemProperty -Path $regPath -Name "LaunchTo" -Value 1
-        Log-Ok "Configuracao aplicada ao perfil do usuario logado."
+        Set-ItemProperty -Path $regPath -Name "LaunchTo" -Value 1 *>> $LogPath
+        Log-Ok "Configuração do Explorador aplicada ao perfil do usuário."
     }
 } else {
-    # Fallback caso a detecção falhe (aplica no HKCU padrão)
-    Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "LaunchTo" -Value 1
+    Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "LaunchTo" -Value 1 *>> $LogPath
 }
 
-# --- CONFIGURAÇÕES DE ENERGIA E Hibernação
 Log "Configurando Energia e Tampa..."
-# Desativa a Hibernação
-powercfg /hibernate off
-# Nunca suspender (Tomada e Bateria)
-powercfg /x -standby-timeout-ac 0
-powercfg /x -standby-timeout-dc 0
-# Fechar a tampa = Nada a fazer (Tomada e Bateria)
-powercfg /setacvalueindex SCHEME_CURRENT SUB_BUTTONS LIDACTION 0
-powercfg /setdcvalueindex SCHEME_CURRENT SUB_BUTTONS LIDACTION 0
-# Aplica as configurações
-powercfg /s SCHEME_CURRENT
+powercfg /hibernate off *>> $LogPath
+powercfg /x -standby-timeout-ac 0 *>> $LogPath
+powercfg /x -standby-timeout-dc 0 *>> $LogPath
+powercfg /setacvalueindex SCHEME_CURRENT SUB_BUTTONS LIDACTION 0 *>> $LogPath
+powercfg /setdcvalueindex SCHEME_CURRENT SUB_BUTTONS LIDACTION 0 *>> $LogPath
+powercfg /s SCHEME_CURRENT *>> $LogPath
 
 # --- PERGUNTA SOBRE A INSTALAÇÃO DO ANYDESK ---
 $instalarAnyDesk = Read-Host "Deseja instalar o AnyDesk? (S/N)"
@@ -130,8 +145,8 @@ if ($instalarAnyDesk -match '^[SsYy]') {
     $senhaEntrada = Read-Host "Digite a senha do AnyDesk (ou Enter para pular)"
 }
 
-# 3. Instalação/Atualização dos Programas
-Log-Info "Iniciando instalacoes via Winget..."
+# --- INSTALAÇÃO DOS PROGRAMAS ---
+Log-Info "Iniciando instalacoes dos programas..."
 
 $apps = @(
     "Google.Chrome",
@@ -140,7 +155,6 @@ $apps = @(
     "RARLab.WinRAR"
 )
 
-# Adiciona o AnyDesk na lista caso o usuário tenha optado por instalar
 if ($instalarAnyDesk -match '^[SsYy]') {
     $apps = @("AnyDesk.AnyDesk") + $apps
 }
@@ -148,42 +162,39 @@ if ($instalarAnyDesk -match '^[SsYy]') {
 foreach ($app in $apps) {
     Write-Host "`nProcessando: $app" -ForegroundColor White
     
-    # 1. Tenta instalar com locale exibindo o progresso visual nativo do Winget
-    winget install --id $app -e --source winget --accept-source-agreements --accept-package-agreements --silent --locale pt-BR
+    # Execução silenciosa no terminal com saída gravada no log.txt
+    winget install --id $app -e --source winget --accept-source-agreements --accept-package-agreements --silent --locale pt-BR *>> $LogPath
     
     if ($LASTEXITCODE -eq 0) {
         Log-Ok "$app instalado com sucesso!"
     } else {
-        # 2. Tenta instalar padrão sem o locale
-        Log "Tentando instalacao padrao sem locale..."
-        winget install --id $app -e --source winget --accept-source-agreements --accept-package-agreements --silent
+        winget install --id $app -e --source winget --accept-source-agreements --accept-package-agreements --silent *>> $LogPath
         
         if ($LASTEXITCODE -eq 0) {
             Log-Ok "$app instalado com sucesso!"
         } else {
-            # 3. Fallback exclusivo do Chrome via MSI direto caso o Winget trave no hash
+            # Fallback direto do Google Chrome
             if ($app -eq "Google.Chrome") {
-                Log "Winget falhou no hash do Chrome. Baixando instalador MSI direto do Google..."
+                Log "Winget falhou no hash do Chrome. Baixando MSI corporativo direto..."
                 $chromeMsi = "$env:TEMP\chrome.msi"
                 try {
-                    Download-ComProgresso -Uri "https://dl.google.com/dl/chrome/install/googlechromestandaloneenterprise64.msi" -OutFile $chromeMsi -Descricao "Baixando Google Chrome (MSI Corporativo)"
+                    Download-ComProgresso -Uri "https://dl.google.com/dl/chrome/install/googlechromestandaloneenterprise64.msi" -OutFile $chromeMsi -Descricao "Baixando Google Chrome (MSI)"
                     Start-Process msiexec.exe -ArgumentList "/i `"$chromeMsi`" /qn /norestart" -Wait
                     Remove-Item $chromeMsi -Force -ErrorAction SilentlyContinue
                     Log-Ok "Google Chrome instalado via MSI!"
                 } catch {
-                    Log-Err "Falha critica ao instalar o Google Chrome via MSI."
+                    Log-Err "Falha crítica ao instalar o Google Chrome via MSI."
                 }
             } else {
-                Log-Err "Erro ao instalar $app (Codigo de saida: $LASTEXITCODE)."
+                Log-Err "Erro ao instalar $app (Consulte log.txt para detalhes)."
             }
         }
     }
 
-    # --- CHAMADA DA FUNÇÃO LOGO APÓS INSTALAR O ANYDESK ---
     if ($app -eq "AnyDesk.AnyDesk") {
         Set-AnyDeskPassword -senha $senhaEntrada
     }
 }
 
-Log-Ok "Script finalizado com sucesso!"
+Log-Ok "`nScript finalizado com sucesso! Detalhes salvos em: $LogPath"
 pause
