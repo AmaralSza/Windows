@@ -6,7 +6,44 @@ function Log-Err ($msg) { Write-Host $msg -ForegroundColor Red }
 
 # Versão
 Log "Binarius Tech - Soluções em Informática"
-Log "Versão 1.25"
+Log "Versão 1.26"
+
+# --- FUNÇÃO PARA DOWNLOAD COM BARRA DE PROGRESSO VISUAL LIMPA ---
+function Download-ComProgresso {
+    param(
+        [Parameter(Mandatory=$true)][string]$Uri,
+        [Parameter(Mandatory=$true)][string]$OutFile,
+        [string]$Descricao = "Baixando arquivo..."
+    )
+    
+    $webClient = New-Object System.Net.WebClient
+    
+    # Evento para atualizar a barra de progresso visual do PowerShell
+    $eventHandler = {
+        $percent = $EventArgs.ProgressPercentage
+        $mbRecebidos = [Math]::Round($EventArgs.BytesReceived / 1MB, 2)
+        $mbTotal = [Math]::Round($EventArgs.TotalBytesToReceive / 1MB, 2)
+        
+        if ($mbTotal -gt 0) {
+            Write-Progress -Activity $Descricao -Status "$percent% concluído ($mbRecebidos MB de $mbTotal MB)" -PercentComplete $percent
+        } else {
+            Write-Progress -Activity $Descricao -Status "$mbRecebidos MB baixados" -PercentComplete -1
+        }
+    }
+    
+    Register-ObjectEvent -InputObject $webClient -EventName DownloadProgressChanged -Action $eventHandler | Out-Null
+    
+    try {
+        $webClient.DownloadFileAsync((New-Object System.Uri($Uri)), $OutFile)
+        while ($webClient.IsBusy) {
+            Start-Sleep -Milliseconds 100
+        }
+        Write-Progress -Activity $Descricao -Completed
+    } finally {
+        $webClient.Dispose()
+        Get-EventSubscriber | Where-Object { $_.SourceObject -eq $webClient } | Unregister-Event
+    }
+}
 
 # --- FUNÇÃO PARA CONFIGURAR SENHA DO ANYDESK ---
 function Set-AnyDeskPassword {
@@ -28,20 +65,18 @@ Log "Verificando disponibilidade do Winget..."
 if (-not (Get-Command "winget" -ErrorAction SilentlyContinue)) {
     
     Log "Winget nao encontrado. Instalando dependencias (WindowsAppRuntime)..."
-    $ProgressPreference = 'SilentlyContinue'
     
     # 1. Instala o WindowsAppRuntime (Necessário para o erro 0x80073CF3)
     $depUrl = "https://aka.ms/windowsappsdk/1.6/1.6.241105002/windowsappruntimeinstall-x64.exe"
-    Invoke-WebRequest -Uri $depUrl -OutFile "$env:TEMP\runtime.exe"
+    Download-ComProgresso -Uri $depUrl -OutFile "$env:TEMP\runtime.exe" -Descricao "Baixando WindowsAppRuntime"
     Start-Process -FilePath "$env:TEMP\runtime.exe" -ArgumentList "--quiet" -Wait
     
     Log "Baixando instalador oficial do Winget..."
     $url = "https://github.com/microsoft/winget-cli/releases/latest/download/Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle"
-    Invoke-WebRequest -Uri $url -OutFile "$env:TEMP\winget.msixbundle"
+    Download-ComProgresso -Uri $url -OutFile "$env:TEMP\winget.msixbundle" -Descricao "Baixando Winget MSIXBundle"
     
     Log "Instalando Winget..."
     Add-AppxPackage "$env:TEMP\winget.msixbundle"
-    $ProgressPreference = 'Continue'
 }
 
 # 1. Limpeza e Preparação
@@ -113,7 +148,7 @@ if ($instalarAnyDesk -match '^[SsYy]') {
 foreach ($app in $apps) {
     Write-Host "`nProcessando: $app" -ForegroundColor White
     
-    # 1. Tenta instalar com locale exibindo o progresso visual
+    # 1. Tenta instalar com locale exibindo o progresso visual nativo do Winget
     winget install --id $app -e --source winget --accept-source-agreements --accept-package-agreements --silent --locale pt-BR
     
     if ($LASTEXITCODE -eq 0) {
@@ -126,12 +161,12 @@ foreach ($app in $apps) {
         if ($LASTEXITCODE -eq 0) {
             Log-Ok "$app instalado com sucesso!"
         } else {
-            # 3. Fallback exclusivo do Chrome via MSI direto caso o Winget trave
+            # 3. Fallback exclusivo do Chrome via MSI direto caso o Winget trave no hash
             if ($app -eq "Google.Chrome") {
                 Log "Winget falhou no hash do Chrome. Baixando instalador MSI direto do Google..."
                 $chromeMsi = "$env:TEMP\chrome.msi"
                 try {
-                    Invoke-WebRequest -Uri "https://dl.google.com/dl/chrome/install/googlechromestandaloneenterprise64.msi" -OutFile $chromeMsi
+                    Download-ComProgresso -Uri "https://dl.google.com/dl/chrome/install/googlechromestandaloneenterprise64.msi" -OutFile $chromeMsi -Descricao "Baixando Google Chrome (MSI Corporativo)"
                     Start-Process msiexec.exe -ArgumentList "/i `"$chromeMsi`" /qn /norestart" -Wait
                     Remove-Item $chromeMsi -Force -ErrorAction SilentlyContinue
                     Log-Ok "Google Chrome instalado via MSI!"
