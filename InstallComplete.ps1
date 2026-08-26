@@ -5,7 +5,7 @@ function Log-Info ($msg) { Write-Host $msg -ForegroundColor Cyan }
 
 # Versão
 Log "Binarius Tech - Soluções em Informática"
-Log "Versão 1.21"
+Log "Versão 1.22"
 
 # --- FUNÇÃO PARA CONFIGURAR SENHA DO ANYDESK ---
 function Set-AnyDeskPassword {
@@ -112,29 +112,24 @@ if ($instalarAnyDesk -match '^[SsYy]') {
 foreach ($app in $apps) {
     Write-Host "Processando: $app" -ForegroundColor White
     
-    # Verifica se já está instalado
-    $isInstalled = winget list --id $app --exact 2>$null
+    # Tenta instalar direto
+    winget install --id $app -e --source winget --accept-source-agreements --accept-package-agreements --silent --locale pt-BR
     
-    if ($isInstalled) {
-        winget upgrade --id $app -e --source winget --accept-source-agreements --accept-package-agreements --silent
-    } else {
-        winget install --id $app -e --source winget --accept-source-agreements --accept-package-agreements --silent --locale pt-BR
+    if ($LASTEXITCODE -ne 0) {
+        Log "Tentando instalacao padrao sem locale..."
+        winget install --id $app -e --source winget --accept-source-agreements --accept-package-agreements --silent
         
-        # Se a instalação falhar (ou hash mismatch do Winget)
-        if ($LASTEXITCODE -ne 0) {
-            Log "Instalação com locale falhou. Tentando padrão..."
-            winget install --id $app -e --source winget --accept-source-agreements --accept-package-agreements --silent
-            
-            # Fallback exclusivo para o Chrome via MSI direto caso o Winget trave no hash
-            if ($LASTEXITCODE -ne 0 -and $app -eq "Google.Chrome") {
-                Log "Winget falhou no hash do Chrome. Baixando instalador MSI direto do Google..."
-                $chromeMsi = "$env:TEMP\chrome.msi"
-                $ProgressPreference = 'SilentlyContinue'
-                Invoke-WebRequest -Uri "https://dl.google.com/dl/chrome/install/googlechromestandaloneenterprise64.msi" -OutFile $chromeMsi
-                Start-Process msiexec.exe -ArgumentList "/i `"$chromeMsi`" /qn /norestart" -Wait
-                Remove-Item $chromeMsi -Force -ErrorAction SilentlyContinue
-                Log-Ok "Google Chrome instalado via MSI!"
-            }
+        # Fallback exclusivo para o Chrome via MSI direto caso o Winget trave no hash
+        if ($LASTEXITCODE -ne 0 -and $app -eq "Google.Chrome") {
+            Log "Winget falhou no hash do Chrome. Baixando instalador MSI direto do Google..."
+            $chromeMsi = "$env:TEMP\chrome.msi"
+            $oldPref = $ProgressPreference
+            $ProgressPreference = 'SilentlyContinue'
+            Invoke-WebRequest -Uri "https://dl.google.com/dl/chrome/install/googlechromestandaloneenterprise64.msi" -OutFile $chromeMsi
+            $ProgressPreference = $oldPref
+            Start-Process msiexec.exe -ArgumentList "/i `"$chromeMsi`" /qn /norestart" -Wait
+            Remove-Item $chromeMsi -Force -ErrorAction SilentlyContinue
+            Log-Ok "Google Chrome instalado via MSI!"
         }
     }
 
