@@ -1,11 +1,12 @@
-# --- DEFINIÇÃO DO ARQUIVO DE LOG ---
-$LogPath = Join-Path -Path $PSScriptRoot -ChildPath "log.txt"
+# --- DEFINIÇÃO DO ARQUIVO DE LOG (ROBUSTO) ---
+$scriptDir = if ($PSScriptRoot) { $PSScriptRoot } else { (Get-Location).Path }
+$global:LogPath = Join-Path -Path $scriptDir -ChildPath "log.txt"
 
 # Cria/Sobrescreve o arquivo no início da execução
-"======================================================" | Out-File -FilePath $LogPath -Force -Encoding utf8
-"Binarius Tech - Soluções em Informática - Instalação"   | Out-File -FilePath $LogPath -Append -Encoding utf8
-"Data/Hora: $(Get-Date -Format 'dd/MM/yyyy HH:mm:ss')"    | Out-File -FilePath $LogPath -Append -Encoding utf8
-"======================================================" | Out-File -FilePath $LogPath -Append -Encoding utf8
+"======================================================" | Out-File -FilePath $global:LogPath -Force -Encoding utf8
+"Binarius Tech - Soluções em Informática - Instalação"   | Out-File -FilePath $global:LogPath -Append -Encoding utf8
+"Data/Hora: $(Get-Date -Format 'dd/MM/yyyy HH:mm:ss')"    | Out-File -FilePath $global:LogPath -Append -Encoding utf8
+"======================================================" | Out-File -FilePath $global:LogPath -Append -Encoding utf8
 
 # --- FUNÇÕES DE CORES E LOG ---
 function Write-CustomLog {
@@ -15,7 +16,7 @@ function Write-CustomLog {
         [ConsoleColor]$color = [ConsoleColor]::White
     )
     $timestamp = Get-Date -Format "HH:mm:ss"
-    "[$timestamp][$nivel] $msg" | Out-File -FilePath $LogPath -Append -Encoding utf8
+    "[$timestamp][$nivel] $msg" | Out-File -FilePath $global:LogPath -Append -Encoding utf8
     Write-Host $msg -ForegroundColor $color
 }
 
@@ -28,7 +29,7 @@ function Log-Err ($msg) { Write-CustomLog -msg $msg -nivel "ERRO" -color Red }
 Clear-Host
 Log "=========================================="
 Log "Binarius Tech - Soluções em Informática"
-Log "Versão 1.27"
+Log "Versão 1.28"
 Log "=========================================="
 
 # --- FUNÇÃO PARA DOWNLOAD COM BARRA DE PROGRESSO VISUAL ---
@@ -61,9 +62,9 @@ function Download-ComProgresso {
             Start-Sleep -Milliseconds 100
         }
         Write-Progress -Activity $Descricao -Completed
-        "Download concluído: $Uri -> $OutFile" | Out-File -FilePath $LogPath -Append -Encoding utf8
+        "Download concluído: $Uri -> $OutFile" | Out-File -FilePath $global:LogPath -Append -Encoding utf8
     } catch {
-        "Erro no download de $Uri : $_" | Out-File -FilePath $LogPath -Append -Encoding utf8
+        "Erro no download de $Uri : $_" | Out-File -FilePath $global:LogPath -Append -Encoding utf8
     } finally {
         $webClient.Dispose()
         Get-EventSubscriber | Where-Object { $_.SourceObject -eq $webClient } | Unregister-Event
@@ -79,7 +80,7 @@ function Set-AnyDeskPassword {
         
         if ($anydeskPath) {
             Log "Configurando senha do AnyDesk..."
-            $senha | & $anydeskPath --set-password *>> $LogPath
+            $senha | & $anydeskPath --set-password *>> $global:LogPath
             Log-Ok "Senha do AnyDesk configurada!"
         }
     }
@@ -100,21 +101,21 @@ if (-not (Get-Command "winget" -ErrorAction SilentlyContinue)) {
     Download-ComProgresso -Uri $url -OutFile "$env:TEMP\winget.msixbundle" -Descricao "Baixando Winget MSIXBundle"
     
     Log "Instalando Winget..."
-    Add-AppxPackage "$env:TEMP\winget.msixbundle" *>> $LogPath
+    Add-AppxPackage "$env:TEMP\winget.msixbundle" *>> $global:LogPath
 }
 
 # --- LIMPEZA E PREPARAÇÃO ---
 Log "Resetando fontes do Winget..."
-winget source reset --force *>> $LogPath
-winget source update *>> $LogPath
+winget source reset --force *>> $global:LogPath
+winget source update *>> $global:LogPath
 
 Log "Limpando processos parciais..."
-Stop-Process -Name "AppInstallerPython" -ErrorAction SilentlyContinue *>> $LogPath
+Stop-Process -Name "AppInstallerPython" -ErrorAction SilentlyContinue *>> $global:LogPath
 Start-Sleep -Seconds 2
 
 # --- AJUSTES DO SISTEMA ---
 Log "Desativando avisos do UAC..."
-Set-ItemProperty -Path "HKLM:\Software\Microsoft\Windows\CurrentVersion\Policies\System" -Name "ConsentPromptBehaviorAdmin" -Value 0 *>> $LogPath
+Set-ItemProperty -Path "HKLM:\Software\Microsoft\Windows\CurrentVersion\Policies\System" -Name "ConsentPromptBehaviorAdmin" -Value 0 *>> $global:LogPath
 
 Log "Configurando Explorador para o usuário real..."
 $userSID = (Get-WmiObject Win32_ComputerSystem).UserName
@@ -123,20 +124,20 @@ if ($userSID) {
     $regPath = "Registry::HKEY_USERS\$userSID\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"
     
     if (Test-Path $regPath) {
-        Set-ItemProperty -Path $regPath -Name "LaunchTo" -Value 1 *>> $LogPath
+        Set-ItemProperty -Path $regPath -Name "LaunchTo" -Value 1 *>> $global:LogPath
         Log-Ok "Configuração do Explorador aplicada ao perfil do usuário."
     }
 } else {
-    Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "LaunchTo" -Value 1 *>> $LogPath
+    Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "LaunchTo" -Value 1 *>> $global:LogPath
 }
 
 Log "Configurando Energia e Tampa..."
-powercfg /hibernate off *>> $LogPath
-powercfg /x -standby-timeout-ac 0 *>> $LogPath
-powercfg /x -standby-timeout-dc 0 *>> $LogPath
-powercfg /setacvalueindex SCHEME_CURRENT SUB_BUTTONS LIDACTION 0 *>> $LogPath
-powercfg /setdcvalueindex SCHEME_CURRENT SUB_BUTTONS LIDACTION 0 *>> $LogPath
-powercfg /s SCHEME_CURRENT *>> $LogPath
+powercfg /hibernate off *>> $global:LogPath
+powercfg /x -standby-timeout-ac 0 *>> $global:LogPath
+powercfg /x -standby-timeout-dc 0 *>> $global:LogPath
+powercfg /setacvalueindex SCHEME_CURRENT SUB_BUTTONS LIDACTION 0 *>> $global:LogPath
+powercfg /setdcvalueindex SCHEME_CURRENT SUB_BUTTONS LIDACTION 0 *>> $global:LogPath
+powercfg /s SCHEME_CURRENT *>> $global:LogPath
 
 # --- PERGUNTA SOBRE A INSTALAÇÃO DO ANYDESK ---
 $instalarAnyDesk = Read-Host "Deseja instalar o AnyDesk? (S/N)"
@@ -163,12 +164,12 @@ foreach ($app in $apps) {
     Write-Host "`nProcessando: $app" -ForegroundColor White
     
     # Execução silenciosa no terminal com saída gravada no log.txt
-    winget install --id $app -e --source winget --accept-source-agreements --accept-package-agreements --silent --locale pt-BR *>> $LogPath
+    winget install --id $app -e --source winget --accept-source-agreements --accept-package-agreements --silent --locale pt-BR *>> $global:LogPath
     
     if ($LASTEXITCODE -eq 0) {
         Log-Ok "$app instalado com sucesso!"
     } else {
-        winget install --id $app -e --source winget --accept-source-agreements --accept-package-agreements --silent *>> $LogPath
+        winget install --id $app -e --source winget --accept-source-agreements --accept-package-agreements --silent *>> $global:LogPath
         
         if ($LASTEXITCODE -eq 0) {
             Log-Ok "$app instalado com sucesso!"
@@ -196,5 +197,5 @@ foreach ($app in $apps) {
     }
 }
 
-Log-Ok "`nScript finalizado com sucesso! Detalhes salvos em: $LogPath"
+Log-Ok "`nScript finalizado com sucesso! Detalhes salvos em: $global:LogPath"
 pause
