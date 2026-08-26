@@ -5,7 +5,7 @@ function Log-Info ($msg) { Write-Host $msg -ForegroundColor Cyan }
 
 # Versão
 Log "Binarius Tech - Soluções em Informática"
-Log "Versão 1.20"
+Log "Versão 1.21"
 
 # --- FUNÇÃO PARA CONFIGURAR SENHA DO ANYDESK ---
 function Set-AnyDeskPassword {
@@ -127,7 +127,10 @@ foreach ($app in $apps) {
             if ($LASTEXITCODE -ne 0 -and $app -eq "Google.Chrome") {
                 Log "Winget falhou no hash do Chrome. Baixando instalador MSI direto do Google..."
                 $chromeMsi = "$env:TEMP\chrome.msi"
+                $progAntigo = $ProgressPreference
+                $ProgressPreference = 'SilentlyContinue'
                 Invoke-WebRequest -Uri "https://dl.google.com/dl/chrome/install/googlechromestandaloneenterprise64.msi" -OutFile $chromeMsi
+                $ProgressPreference = $progAntigo
                 Start-Process msiexec.exe -ArgumentList "/i `"$chromeMsi`" /qn /norestart" -Wait
                 Remove-Item $chromeMsi -Force -ErrorAction SilentlyContinue
                 Log-Ok "Google Chrome instalado via MSI!"
