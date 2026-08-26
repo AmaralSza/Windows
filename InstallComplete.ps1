@@ -5,7 +5,7 @@ function Log-Info ($msg) { Write-Host $msg -ForegroundColor Cyan }
 
 # Versão
 Log "Binarius Tech - Soluções em Informática"
-Log "Versão 1.21"
+Log "Versão 1.20"
 
 # --- FUNÇÃO PARA CONFIGURAR SENHA DO ANYDESK ---
 function Set-AnyDeskPassword {
@@ -46,7 +46,6 @@ if (-not (Get-Command "winget" -ErrorAction SilentlyContinue)) {
 # 1. Limpeza e Preparação
 Log "Resetando fontes do Winget..."
 winget source reset --force
-Remove-Item "$env:LOCALAPPDATA\Packages\Microsoft.DesktopAppInstaller_*\LocalState\*" -Recurse -Force -ErrorAction SilentlyContinue
 winget source update
 
 # Limpa processos que podem travar a instalação
@@ -112,21 +111,21 @@ if ($instalarAnyDesk -match '^[SsYy]') {
 
 foreach ($app in $apps) {
     Write-Host "Processando: $app" -ForegroundColor White
-
-    # Verifica se o aplicativo já está presente no computador
-    $isInstalled = winget list --id $app --exact 2>$null
-
-    if ($isInstalled) {
-        # Se já existe, atualiza
-        winget upgrade --id $app -e --source winget --accept-source-agreements --accept-package-agreements --silent
-    } else {
-        # Se não existe, instala direto
+    
+    # Tenta Upgrade ou Install
+    winget upgrade --id $app -e --source winget --accept-source-agreements --accept-package-agreements --silent --locale pt-BR
+    if ($LASTEXITCODE -ne 0) {
+        # Tenta instalar com locale
         winget install --id $app -e --source winget --accept-source-agreements --accept-package-agreements --silent --locale pt-BR
-        if ($LASTEXITCODE -ne 0) {
+
+        # Se falhar, tenta sem o locale
+        if (-not $?) {
+            Log "Instalação com locale falhou. Tentando padrão..."
             winget install --id $app -e --source winget --accept-source-agreements --accept-package-agreements --silent
         }
     }
 
+    # --- CHAMADA DA FUNÇÃO LOGO APÓS INSTALAR O ANYDESK ---
     if ($app -eq "AnyDesk.AnyDesk") {
         Set-AnyDeskPassword -senha $senhaEntrada
     }
