@@ -2,11 +2,10 @@
 function Log ($msg) { Write-Host $msg -ForegroundColor Yellow }
 function Log-Ok ($msg) { Write-Host $msg -ForegroundColor Green }
 function Log-Info ($msg) { Write-Host $msg -ForegroundColor Cyan }
-function Log-Err ($msg) { Write-Host $msg -ForegroundColor Red }
 
 # Versão
 Log "Binarius Tech - Soluções em Informática"
-Log "Versão 1.25"
+Log "Versão 1.20"
 
 # --- FUNÇÃO PARA CONFIGURAR SENHA DO ANYDESK ---
 function Set-AnyDeskPassword {
@@ -18,7 +17,7 @@ function Set-AnyDeskPassword {
         
         if ($anydeskPath) {
             Log "Configurando senha do AnyDesk..."
-            $senha | & $anydeskPath --set-password *>$null
+            $senha | & $anydeskPath --set-password
             Log-Ok "Senha do AnyDesk configurada!"
         }
     }
@@ -111,36 +110,29 @@ if ($instalarAnyDesk -match '^[SsYy]') {
 }
 
 foreach ($app in $apps) {
-    Write-Host "`nProcessando: $app" -ForegroundColor White
+    Write-Host "Processando: $app" -ForegroundColor White
     
-    # 1. Tenta instalar com locale exibindo o progresso visual
-    winget install --id $app -e --source winget --accept-source-agreements --accept-package-agreements --silent --locale pt-BR
-    
-    if ($LASTEXITCODE -eq 0) {
-        Log-Ok "$app instalado com sucesso!"
-    } else {
-        # 2. Tenta instalar padrão sem o locale
-        Log "Tentando instalacao padrao sem locale..."
-        winget install --id $app -e --source winget --accept-source-agreements --accept-package-agreements --silent
-        
-        if ($LASTEXITCODE -eq 0) {
-            Log-Ok "$app instalado com sucesso!"
-        } else {
-            # 3. Fallback exclusivo do Chrome via MSI direto caso o Winget trave
-            if ($app -eq "Google.Chrome") {
+    # Tenta Upgrade ou Install
+    winget upgrade --id $app -e --source winget --accept-source-agreements --accept-package-agreements --silent --locale pt-BR
+    if ($LASTEXITCODE -ne 0) {
+        # Tenta instalar com locale
+        winget install --id $app -e --source winget --accept-source-agreements --accept-package-agreements --silent --locale pt-BR
+
+        # Se falhar, tenta sem o locale
+        if (-not $?) {
+            Log "Instalação com locale falhou. Tentando padrão..."
+            winget install --id $app -e --source winget --accept-source-agreements --accept-package-agreements --silent
+            
+            # --- CORREÇÃO ESPECÍFICA PARA O GOOGLE CHROME (ERRO DE HASH) ---
+            if ($LASTEXITCODE -ne 0 -and $app -eq "Google.Chrome") {
                 Log "Winget falhou no hash do Chrome. Baixando instalador MSI direto do Google..."
                 $chromeMsi = "$env:TEMP\chrome.msi"
-                try {
-                    Invoke-WebRequest -Uri "https://dl.google.com/dl/chrome/install/googlechromestandaloneenterprise64.msi" -OutFile $chromeMsi
-                    Start-Process msiexec.exe -ArgumentList "/i `"$chromeMsi`" /qn /norestart" -Wait
-                    Remove-Item $chromeMsi -Force -ErrorAction SilentlyContinue
-                    Log-Ok "Google Chrome instalado via MSI!"
-                } catch {
-                    Log-Err "Falha critica ao instalar o Google Chrome via MSI."
-                }
-            } else {
-                Log-Err "Erro ao instalar $app (Codigo de saida: $LASTEXITCODE)."
+                Invoke-WebRequest -Uri "https://dl.google.com/dl/chrome/install/googlechromestandaloneenterprise64.msi" -OutFile $chromeMsi
+                Start-Process msiexec.exe -ArgumentList "/i `"$chromeMsi`" /qn /norestart" -Wait
+                Remove-Item $chromeMsi -Force -ErrorAction SilentlyContinue
+                Log-Ok "Google Chrome instalado via MSI!"
             }
+            # -------------------------------------------------------------
         }
     }
 
