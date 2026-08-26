@@ -1,6 +1,5 @@
-# --- DEFINIÇÃO DO ARQUIVO DE LOG (ROBUSTO) ---
-$scriptDir = if ($PSScriptRoot) { $PSScriptRoot } else { (Get-Location).Path }
-$global:LogPath = Join-Path -Path $scriptDir -ChildPath "log.txt"
+# --- DEFINIÇÃO DO ARQUIVO DE LOG NA PASTA TEMPORÁRIA ---
+$global:LogPath = Join-Path -Path $env:TEMP -ChildPath "log.txt"
 
 # Cria/Sobrescreve o arquivo no início da execução
 "======================================================" | Out-File -FilePath $global:LogPath -Force -Encoding utf8
@@ -29,8 +28,10 @@ function Log-Err ($msg) { Write-CustomLog -msg $msg -nivel "ERRO" -color Red }
 Clear-Host
 Log "=========================================="
 Log "Binarius Tech - Soluções em Informática"
-Log "Versão 1.28"
+Log "Versão 1.30"
 Log "=========================================="
+Log-Info "Arquivo de log sendo gravado em: $global:LogPath"
+Write-Host ""
 
 # --- FUNÇÃO PARA DOWNLOAD COM BARRA DE PROGRESSO VISUAL ---
 function Download-ComProgresso {
@@ -163,20 +164,30 @@ if ($instalarAnyDesk -match '^[SsYy]') {
 foreach ($app in $apps) {
     Write-Host "`nProcessando: $app" -ForegroundColor White
     
-    # Execução silenciosa no terminal com saída gravada no log.txt
-    winget install --id $app -e --source winget --accept-source-agreements --accept-package-agreements --silent --locale pt-BR *>> $global:LogPath
+    # Código de saída específico do Winget quando o app já existe e não precisa de atualização
+    $WINGET_ALREADY_INSTALLED = -1978335189
     
-    if ($LASTEXITCODE -eq 0) {
+    # 1. Tenta instalar com locale pt-BR
+    winget install --id $app -e --source winget --accept-source-agreements --accept-package-agreements --silent --locale pt-BR *>> $global:LogPath
+    $exitCode = $LASTEXITCODE
+    
+    if ($exitCode -eq 0) {
         Log-Ok "$app instalado com sucesso!"
+    } elseif ($exitCode -eq $WINGET_ALREADY_INSTALLED) {
+        Log-Info "$app já está instalado e atualizado."
     } else {
+        # 2. Tenta instalar padrão sem o locale
         winget install --id $app -e --source winget --accept-source-agreements --accept-package-agreements --silent *>> $global:LogPath
+        $exitCode = $LASTEXITCODE
         
-        if ($LASTEXITCODE -eq 0) {
+        if ($exitCode -eq 0) {
             Log-Ok "$app instalado com sucesso!"
+        } elseif ($exitCode -eq $WINGET_ALREADY_INSTALLED) {
+            Log-Info "$app já está instalado e atualizado."
         } else {
-            # Fallback direto do Google Chrome
+            # 3. Fallback direto do Google Chrome caso o Winget falhe (ex: erro de hash)
             if ($app -eq "Google.Chrome") {
-                Log "Winget falhou no hash do Chrome. Baixando MSI corporativo direto..."
+                Log "Winget falhou no Chrome. Baixando MSI corporativo direto..."
                 $chromeMsi = "$env:TEMP\chrome.msi"
                 try {
                     Download-ComProgresso -Uri "https://dl.google.com/dl/chrome/install/googlechromestandaloneenterprise64.msi" -OutFile $chromeMsi -Descricao "Baixando Google Chrome (MSI)"
@@ -187,7 +198,7 @@ foreach ($app in $apps) {
                     Log-Err "Falha crítica ao instalar o Google Chrome via MSI."
                 }
             } else {
-                Log-Err "Erro ao instalar $app (Consulte log.txt para detalhes)."
+                Log-Err "Erro ao instalar $app (Consulte o log para detalhes)."
             }
         }
     }
@@ -197,5 +208,7 @@ foreach ($app in $apps) {
     }
 }
 
-Log-Ok "`nScript finalizado com sucesso! Detalhes salvos em: $global:LogPath"
+Write-Host ""
+Log-Ok "Script finalizado com sucesso!"
+Log-Info "Registro completo salvo em: $global:LogPath"
 pause
